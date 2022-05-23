@@ -24,3 +24,24 @@ span {
 .lineaPalabra {
   display: flex;
 }
+// #lienzo {
+//   position: absolute;
+//   top: 3px;
+//   left: 0;
+// }
+
+.contenedorPalabra {
+  position: relative;
+  height: 100px;
+}
+
+.lienzoOriginal {
+  margin-top: 50px;
+}
+
+.lineaLetras,
+.onda {
+  position: absolute;
+  left: 0;
+  top: 0;
+}

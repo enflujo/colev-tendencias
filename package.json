@@ -7,7 +7,8 @@
   "private": true,
   "scripts": {
     "build": "webpack --config webpack.prod.js",
-    "start": "webpack serve --config webpack.dev.js"
+    "start": "webpack serve --config webpack.dev.js",
+    "servidor": "nodemon servidor.js"
   },
   "devDependencies": {
     "@babel/core": "^7.18.0",
@@ -20,9 +21,11 @@
     "clean-webpack-plugin": "^4.0.0",
     "cross-env": "^7.0.3",
     "css-loader": "^6.7.1",
+    "fuzzball": "^2.1.2",
     "html-loader": "^3.1.0",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.6.0",
+    "nodemon": "^2.0.16",
     "postcss": "^8.4.14",
     "postcss-loader": "^7.0.0",
     "postcss-preset-env": "^7.6.0",
@@ -47,6 +50,11 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
+    ]
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "src/datos/*"
     ]
   }
 }
