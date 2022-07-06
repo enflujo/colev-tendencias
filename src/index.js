@@ -5,18 +5,42 @@ import {
   calcularTranformacionLineal,
   expandirTriangulo,
   normalizarTexto,
+  pesosAPuntos,
+  puntosACurvas,
 } from './utilidades/ayudas';
 import Punto from './utilidades/Punto';
 import procesarDatos from './utilidades/procesarDatos';
 import tendencias from './datos/tendenciasFiltradas.json';
+
+const conteoMinimo = 14;
+const escalaPantalla = window.devicePixelRatio;
+let pesoMax2 = 0;
 
 let fechaA = new Date('2023/01/01');
 let fechaB = new Date('1970/01/01');
 
 tendencias.sort((a, b) => b.fechas.length - a.fechas.length);
 
-const tendenciasFiltradas = tendencias.filter((obj) => {
-  obj.fechas = obj.fechas.map((f) => {
+let tendenciasFiltradas = tendencias.filter((obj) => {
+  if (obj.fechas.length < conteoMinimo) return false;
+
+  obj.fechas.sort();
+
+  // Cualquier tipo de URL
+  const regUrls =
+    /(http:\/\/|ftp:\/\/|https:\/\/|www\.)([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?/g;
+  if (obj.palabra.match(regUrls)) return;
+
+  if (obj.palabra === 'https://tco/0kIt5rPMHq') return;
+  if (obj.palabra === '\\nhttps://tco/XUxIBqsu9S') return;
+
+  // Omitir estas palabras
+  const regex =
+    /\b(que|los|por|del|con|para|las|una|mas|esta|the|como|pero|and|este|hay|sin|nos|tiene|porque|sus|that|les|desde|ese|muy|tan|not|esa|coronavirus|cada|this|mis|puede|would|you|are|han|for|dio|who|all|colombia|covid-related|eso|uno|vez|van|toda|asi|son|estoy|esto|with|pues|lesser|dont|itself|torment|behold|aware|experiencing|tal|imposes|its|many|statement|what|todos|todo|ano|anos|fue|ahi|from|hacen|era)\b/g;
+  const normalizado = normalizarTexto(obj.palabra);
+  if (normalizado.match(regex)) return;
+
+  obj.fechas = obj.fechas.map((f, i) => {
     const fecha = new Date(f);
     fechaA = fecha < fechaA ? fecha : fechaA;
     fechaB = fecha > fechaB ? fecha : fechaB;
@@ -26,11 +50,80 @@ const tendenciasFiltradas = tendencias.filter((obj) => {
   return true;
 });
 
-console.log(tendenciasFiltradas, fechaA, fechaB);
+function mezclarPalabras(palabraA, palabraB) {
+  const a = tendenciasFiltradas.findIndex((t) => t.palabraDespuesDeLimpieza === palabraA);
+  const b = tendenciasFiltradas.findIndex((t) => t.palabraDespuesDeLimpieza === palabraB);
 
-for (let n = 0; n < 200; n++) {
-  console.log(tendenciasFiltradas[n].palabra, tendenciasFiltradas[n].fechas.length, tendenciasFiltradas[n]);
+  tendenciasFiltradas[a].fechas = [...a.fechas, ...b.fechas];
+  tendenciasFiltradas.splice(b, 1);
+  a.fechas.sort();
 }
+// mezclarPalabras()
+
+function iniciarFecha(fecha) {
+  const dia = fecha.getDate();
+  const mes = fecha.getMonth();
+  const año = fecha.getFullYear();
+
+  return new Date(año, mes, dia);
+}
+
+fechaA = iniciarFecha(fechaA);
+fechaB = iniciarFecha(fechaB);
+
+const numeroSemanas = calcularSemanas(fechaA, fechaB);
+const referenciaSemanas = [];
+let f = new Date(fechaA);
+
+while (f < fechaB) {
+  const diaDelMes = f.getDate();
+  const diaSemana = f.getDay();
+
+  if (diaSemana === 0) {
+    referenciaSemanas.push(f);
+  }
+  f = f.setDate(diaDelMes + 1);
+  f = new Date(f);
+}
+
+referenciaSemanas[referenciaSemanas.length - 1] = new Date(
+  referenciaSemanas[referenciaSemanas.length - 1].setHours(23, 59, 59, 999)
+);
+
+console.log(numeroSemanas, referenciaSemanas);
+
+tendenciasFiltradas.forEach((objPalabra) => {
+  const fechas = objPalabra.fechas;
+  // Iniciar pesos en 0
+  objPalabra.pesos = [...Array(numeroSemanas)].map(() => 0);
+
+  fechas.forEach((fecha) => {
+    const pesoI = referenciaSemanas.findIndex((ref) => ref >= fecha);
+    // console.log(fecha, pesoI);
+    // if (pesoI < 0) {
+    //   console.log(fecha, pesoI);
+    // }
+    objPalabra.pesos[pesoI]++;
+  });
+});
+
+tendenciasFiltradas = tendenciasFiltradas.filter((t) => {
+  const semanasConDatos = t.pesos.filter((p) => p > 0);
+  // console.log(semanasConDatos.length, semanasConDatos.length > 4);
+  return semanasConDatos.length > 4;
+});
+
+tendenciasFiltradas.forEach((t) => {
+  t.pesos.forEach((p) => {
+    if (pesoMax2 < p) {
+      pesoMax2 = p;
+    }
+  });
+});
+
+console.log(tendenciasFiltradas, fechaA, fechaB, numeroSemanas, pesoMax2);
+
+const datos2 = {};
 
 // console.log(tendenciasFiltradas);
 const fechaInicial = new Date('2020/03/25');
@@ -44,19 +137,15 @@ const pesoMax = 50;
 const alto = pesoMax;
 const lineaTiempo = document.getElementById('lineaTiempo');
 
-const datos2 = tendencias.map((obj) => {
-  let inicioSemana = fechaInicial;
-  let finSemana = fechaFinal + 1000 * 60 * 60 * 24 * 7;
-  let semana = 0;
-  obj.fechas.forEach((fecha) => {
-    if (fecha >= inicioSemana && fecha < finSemana) {
-    } else {
-      // console.log('semana', semana);
-      semana++;
-    }
-  });
-});
+for (let n = 0; n < 200; n++) {
+  const obj = tendenciasFiltradas[n];
+  datos2[obj.palabra] = { onda: [], pesos: obj.pesos, puntos: [] };
+  datos2[obj.palabra].puntos = pesosAPuntos(obj.pesos, anchoSemana);
+  datos2[obj.palabra].onda = puntosACurvas(datos2[obj.palabra].puntos, 0.5, partesSemana);
+  // console.log(tendenciasFiltradas[n].palabra, tendenciasFiltradas[n].fechas.length, tendenciasFiltradas[n]);
+}
 console.log(datos2);
+
 const datos = procesarDatos(semanasTotal, alto, anchoSemana, partesSemana);
 console.log(datos);
 const bebas = new FontFace('bebas', 'url(https://fonts.gstatic.com/s/bebasneue/v9/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2)');
@@ -66,8 +155,7 @@ function crearLineaPalabra(palabra, contenedor) {
   const ctx = lienzo.getContext('2d');
 
   lienzo.className = 'lienzoOriginal';
-  lienzo.width = ancho;
-  lienzo.height = alto;
+  escalarLienzo(lienzo, ctx);
 
   // Poner 2 espacios al final para mejorar legibilidad
   const texto = `${palabra}  `;
@@ -104,8 +192,8 @@ bebas.load().then((fuente) => {
 function dibujarOnda(onda, contenedor) {
   const lienzo = document.createElement('canvas');
   const ctx = lienzo.getContext('2d');
-  lienzo.width = ancho;
-  lienzo.height = alto;
+
+  escalarLienzo(lienzo, ctx);
   lienzo.className = 'onda';
   ctx.strokeStyle = '#32a852';
   ctx.lineWidth = '1';
@@ -132,11 +220,10 @@ function crearFila(onda, lienzoOriginal, contenedor) {
   const ctx = lienzo.getContext('2d');
 
   lienzo.className = 'lineaLetras';
-  lienzo.width = ancho;
-  lienzo.height = alto;
+  escalarLienzo(lienzo, ctx);
 
-  // for (let i = 0; i < onda.length - 2; i++) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < onda.length - 2; i++) {
+    // for (let i = 0; i < 8; i++) {
     const puntoA = onda[i];
     const puntoB = onda[i + 1];
     const yMax = Math.max(puntoA.y, puntoB.y);
@@ -265,22 +352,35 @@ function crearFila(onda, lienzoOriginal, contenedor) {
     ctx.drawImage(lienzoOriginal, x1, 0, x2, alto, x1, 0, x2, alto);
     ctx.restore();
 
-    if (contador < 4) {
-      contador++;
-      return;
-    } else {
-      const { radio, centro } = calcularInCirculo(d1, d2, d3);
+    // if (contador < 4) {
+    //   contador++;
+    //   return;
+    // } else {
+    //   const { radio, centro } = calcularInCirculo(d1, d2, d3);
 
-      ctx.beginPath();
-      ctx.arc(centro.x, centro.y, radio, 0, 2 * Math.PI, false);
-      ctx.moveTo(d1.x, d1.y);
-      ctx.lineTo(d2.x, d2.y);
-      ctx.lineTo(d3.x, d3.y);
-      ctx.closePath();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(255,0,0, .4)';
-      ctx.stroke();
-    }
+    //   ctx.beginPath();
+    //   ctx.arc(centro.x, centro.y, radio, 0, 2 * Math.PI, false);
+    //   ctx.moveTo(d1.x, d1.y);
+    //   ctx.lineTo(d2.x, d2.y);
+    //   ctx.lineTo(d3.x, d3.y);
+    //   ctx.closePath();
+    //   ctx.lineWidth = 2;
+    //   ctx.strokeStyle = 'rgba(255,0,0, .4)';
+    //   ctx.stroke();
+    // }
   }
 }
 let contador = 0;
+
+function escalarLienzo(lienzo, ctx) {
+  lienzo.width = ancho;
+  lienzo.height = alto;
+  // Object.assign(lienzo.style, {
+  //   width: `${ancho}px`,
+  //   height: `${alto}px`,
+  // });
+  // lienzo.width = ancho * escalaPantalla;
+  // lienzo.height = alto * escalaPantalla;
+
+  // ctx.scale(escalaPantalla, escalaPantalla);
+}
