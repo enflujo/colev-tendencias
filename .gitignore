@@ -1,4 +1,5 @@
 /dist
 node_modules
-/src/datos
+/src/datos/**.*
+!/src/datos/tendenciasFiltradas.json
 .DS_Store
