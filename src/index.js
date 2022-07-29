@@ -11,6 +11,7 @@ import {
 import Punto from './utilidades/Punto';
 import procesarDatos from './utilidades/procesarDatos';
 import tendencias from './datos/tendenciasFiltradas.json';
+import { crearTexturaDeLienzo, crearTexturaLineaTiempo } from './utilidades/threeRender';
 
 const conteoMinimo = 14;
 const escalaPantalla = window.devicePixelRatio;
@@ -90,7 +91,7 @@ referenciaSemanas[referenciaSemanas.length - 1] = new Date(
   referenciaSemanas[referenciaSemanas.length - 1].setHours(23, 59, 59, 999)
 );
 
-console.log(numeroSemanas, referenciaSemanas);
+// console.log(numeroSemanas, referenciaSemanas);
 
 tendenciasFiltradas.forEach((objPalabra) => {
   const fechas = objPalabra.fechas;
@@ -121,7 +122,7 @@ tendenciasFiltradas.forEach((t) => {
   });
 });
 
-console.log(tendenciasFiltradas, fechaA, fechaB, numeroSemanas, pesoMax2);
+// console.log(tendenciasFiltradas, fechaA, fechaB, numeroSemanas, pesoMax2);
 
 const datos2 = {};
 
@@ -129,31 +130,31 @@ const datos2 = {};
 const fechaInicial = new Date('2020/03/25');
 const fechaFinal = new Date('2022/05/15');
 const semanasTotal = calcularSemanas(fechaInicial, fechaFinal);
-const anchoSemana = 100;
-const partesSemana = 3;
+const anchoSemana = 50;
+const partesSemana = 50; // 3
 const anchoSeccion = anchoSemana / partesSemana;
 const ancho = semanasTotal * anchoSemana;
-const pesoMax = 50;
+const pesoMax = 75;
 const alto = pesoMax;
 const lineaTiempo = document.getElementById('lineaTiempo');
 
-for (let n = 0; n < 200; n++) {
-  const obj = tendenciasFiltradas[n];
-  datos2[obj.palabra] = { onda: [], pesos: obj.pesos, puntos: [] };
-  datos2[obj.palabra].puntos = pesosAPuntos(obj.pesos, anchoSemana);
-  datos2[obj.palabra].onda = puntosACurvas(datos2[obj.palabra].puntos, 0.5, partesSemana);
-  // console.log(tendenciasFiltradas[n].palabra, tendenciasFiltradas[n].fechas.length, tendenciasFiltradas[n]);
-}
-console.log(datos2);
+// for (let n = 0; n < 200; n++) {
+//   const obj = tendenciasFiltradas[n];
+//   datos2[obj.palabra] = { onda: [], pesos: obj.pesos, puntos: [] };
+//   datos2[obj.palabra].puntos = pesosAPuntos(obj.pesos, anchoSemana);
+//   datos2[obj.palabra].onda = puntosACurvas(datos2[obj.palabra].puntos, 0.5, partesSemana);
+// console.log(tendenciasFiltradas[n].palabra, tendenciasFiltradas[n].fechas.length, tendenciasFiltradas[n]);
+// }
+// console.log(datos2);
 
 const datos = procesarDatos(semanasTotal, alto, anchoSemana, partesSemana);
-console.log(datos);
+// console.log(datos);
 const bebas = new FontFace('bebas', 'url(https://fonts.gstatic.com/s/bebasneue/v9/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2)');
 
-function crearLineaPalabra(palabra, contenedor) {
+function crearLineaPalabra(palabra, contenedor, onda, idx, ondas) {
   const lienzo = document.createElement('canvas');
-  const ctx = lienzo.getContext('2d');
-
+  const ctx = lienzo.getContext('2d', { alpha: false });
+  ctx.imageSmoothingQuality = 'high';
   lienzo.className = 'lienzoOriginal';
   escalarLienzo(lienzo, ctx);
 
@@ -163,30 +164,78 @@ function crearLineaPalabra(palabra, contenedor) {
   ctx.textBaseline = 'top';
 
   const dimsPalabra = ctx.measureText(texto);
+  // console.log(dimsPalabra)
   const iteracionesPalabra = (ancho / dimsPalabra.width) | 0;
-
+  let grd = ctx.createLinearGradient(0, 0, ancho, 0);
+  let yAvg;
+  const hue = aleatorioInteger(360);
+  for (let i = 0; i < onda.length - 1; i++) {
+    const puntoA = onda[i];
+    const puntoB = onda[i + 1];
+    yAvg = (puntoA.y + puntoB.y) / 2;
+    yAvg = Math.max(20, Math.min(yAvg, 100));
+    grd.addColorStop(i / onda.length, generateHslaColors(94, yAvg, 1, hue));
+  }
+  ctx.fillStyle = grd;
   ctx.fillText(texto.repeat(iteracionesPalabra), 0, 0);
 
+  // pintar palabras sin modificar
   // contenedor.appendChild(lienzo);
 
+  crearTexturaDeLienzo(lienzo, ancho, alto, idx, ondas);
+
   return lienzo;
+}
+
+function aleatorioInteger(max) {
+  return Math.floor(Math.random() * (max + 1));
+}
+
+function aleatorioRgbColor() {
+  let r = aleatorioInteger(255);
+  let g = aleatorioInteger(255);
+  let b = aleatorioInteger(255);
+  return [r, g, b];
+}
+
+function aleatorioHexColor() {
+  let [r, g, b] = aleatorioRgbColor();
+
+  let hr = r.toString(16).padStart(2, '0');
+  let hg = g.toString(16).padStart(2, '0');
+  let hb = b.toString(16).padStart(2, '0');
+
+  return '#' + hr + hg + hb;
+}
+
+function generateHslaColors(saturation, lightness, alpha, hue) {
+  const color = `hsla(${hue},${saturation}%,${lightness}%,${alpha})`;
+  return color;
 }
 
 // Cargar fuente y esperar a que esté lista antes de iniciar.
 bebas.load().then((fuente) => {
   document.fonts.add(fuente);
-
+  let i = 0;
+  let ondas = [];
   for (let palabra in datos) {
     const contenedor = document.createElement('div');
-    const lienzoOriginal = crearLineaPalabra(palabra, contenedor);
     const { onda } = datos[palabra];
+    ondas[i] = onda;
+    const lienzoOriginal = crearLineaPalabra(palabra, contenedor, onda, i, ondas);
 
     contenedor.className = 'contenedorPalabra';
     lineaTiempo.appendChild(contenedor);
 
-    crearFila(onda, lienzoOriginal, contenedor);
+    // dibujar palabras modificadas
+    // crearFila(ondas, i, lienzoOriginal, contenedor);
+
+    // dibujar curva
     // dibujarOnda(onda, contenedor);
+    i++;
   }
+  crearTexturaLineaTiempo(ancho, alto, fechaInicial, fechaFinal, semanasTotal);
+  // console.log(ondas)
 });
 
 function dibujarOnda(onda, contenedor) {
@@ -196,8 +245,8 @@ function dibujarOnda(onda, contenedor) {
   escalarLienzo(lienzo, ctx);
   lienzo.className = 'onda';
   ctx.strokeStyle = '#32a852';
-  ctx.lineWidth = '1';
-
+  ctx.lineWidth = '2';
+  ctx.setTransform(1, 0, 0, 1, 0, alto + 2);
   ctx.beginPath();
   ctx.moveTo(onda[0].x, onda[0].y);
 
@@ -215,18 +264,33 @@ function dibujarOnda(onda, contenedor) {
 }
 
 // Basado en https://codepen.io/Sphinxxxx/pen/QmdGPW
-function crearFila(onda, lienzoOriginal, contenedor) {
+function crearFila(ondas, idx, lienzoOriginal, contenedor) {
   const lienzo = document.createElement('canvas');
+
   const ctx = lienzo.getContext('2d');
-
   lienzo.className = 'lineaLetras';
-  escalarLienzo(lienzo, ctx);
+  const onda = ondas[idx];
+  let onda0 = null;
 
+  if (idx > 0) {
+    onda0 = ondas[idx - 1];
+  }
+
+  escalarLienzo(lienzo, ctx);
   for (let i = 0; i < onda.length - 2; i++) {
     // for (let i = 0; i < 8; i++) {
     const puntoA = onda[i];
     const puntoB = onda[i + 1];
-    const yMax = Math.max(puntoA.y, puntoB.y);
+    let puntoA0, puntoB0, yMax0;
+    let yMax = Math.max(puntoA.y, puntoB.y);
+    // ctx.fillStyle = generateHslaColors(100, yMax, 1, aleatorioInteger(360))
+
+    if (idx > 0) {
+      puntoA0 = onda0[i];
+      puntoB0 = onda0[i + 1];
+      yMax0 = Math.max(puntoA0.y, puntoB0.y);
+    }
+
     const desplazarX = i * anchoSeccion;
     const centroSeccion = anchoSeccion / 2;
 
@@ -234,13 +298,34 @@ function crearFila(onda, lienzoOriginal, contenedor) {
     // const centro = puntoA.centroCon(puntoB);
     // console.log(centro, puntoA.centroCon(puntoB));
 
-    const esquinas = [
-      new Punto(puntoA.x, 0), // superior izquierda
-      new Punto(puntoB.x, 0), // superior derecha
-      new Punto(puntoA.x + (puntoB.x - puntoA.x) / 2, yMax / 2), //centro
-      puntoA, // inferior izquierda
-      puntoB, // inferior derecha
-    ];
+    // const esquinas = [
+    //   new Punto(puntoA.x, 0), // superior izquierda
+    //   new Punto(puntoB.x, 0), // superior derecha
+    //   new Punto(puntoA.x + (puntoB.x - puntoA.x) / 2, yMax / 2), //centro
+    //   puntoA, // inferior izquierda
+    //   puntoB, // inferior derecha
+    // ];
+
+    let esquinas = [];
+    if (idx > 0) {
+      const centroY = (puntoA0.y - alto + puntoB0.y - alto + puntoA.y + puntoB.y) / 4; //(yMax+yMax0)/2-alto/2
+      // aplique la curva inferior desde la línea de arriba hasta la parte superior de esta línea
+      esquinas = [
+        new Punto(puntoA.x, puntoA0.y - alto), // superior izquierda top left
+        new Punto(puntoB.x, puntoB0.y - alto), // superior derecha top right
+        new Punto(puntoA.x + (puntoB.x - puntoA.x) / 2, centroY), //centro puntoA.x + (puntoB.x - puntoA.x)
+        new Punto(puntoA.x, puntoA.y), // inferior izquierda bottom left
+        new Punto(puntoB.x, puntoB.y), // inferior derecha bottom right
+      ];
+    } else {
+      esquinas = [
+        new Punto(puntoA.x, 0), // superior izquierda top left
+        new Punto(puntoB.x, 0), // superior derecha top right
+        new Punto(puntoA.x + (puntoB.x - puntoA.x) / 2, yMax / 2), //centro
+        new Punto(puntoA.x, puntoA.y), // inferior izquierda bottom left
+        new Punto(puntoB.x, puntoB.y), // inferior derecha bottom right
+      ];
+    }
 
     // Sin distorsión para revisar que pinte normal
 
@@ -340,9 +425,17 @@ function crearFila(onda, lienzoOriginal, contenedor) {
     const [b, d, f] = calcularTranformacionLineal(f1, d1.y, f2, d2.y, f3, d3.y);
     const x1 = desplazarX;
     const x2 = anchoSeccion + desplazarX;
+    // console.log(x1,x2)
+    ctx.imageSmoothingQuality = 'high';
+    // ctx.shadowColor = 'white';
+    // ctx.shadowBlur = 5;
+    // ctx.lineWidth = 1;
+    // ctx.strokeStyle = 'white';
+    // ctx.filter = 'drop-shadow(1px 1px 1px white)'
+    // ctx.filter = `blur(${1}px)`;
 
     ctx.save();
-    ctx.setTransform(a, b, c, d, e, f);
+    ctx.setTransform(a, b, c, d, e, f + alto - 4);
     ctx.beginPath();
     ctx.moveTo(f1.x, f1.y);
     ctx.lineTo(f2.x, f2.y);
@@ -352,11 +445,13 @@ function crearFila(onda, lienzoOriginal, contenedor) {
     ctx.drawImage(lienzoOriginal, x1, 0, x2, alto, x1, 0, x2, alto);
     ctx.restore();
 
+    // dibujar rojo triángulos y circulos
     // if (contador < 4) {
     //   contador++;
     //   return;
     // } else {
     //   const { radio, centro } = calcularInCirculo(d1, d2, d3);
+    //   ctx.setTransform(1, 0, 0, 1, 0, alto);
 
     //   ctx.beginPath();
     //   ctx.arc(centro.x, centro.y, radio, 0, 2 * Math.PI, false);
@@ -364,8 +459,8 @@ function crearFila(onda, lienzoOriginal, contenedor) {
     //   ctx.lineTo(d2.x, d2.y);
     //   ctx.lineTo(d3.x, d3.y);
     //   ctx.closePath();
-    //   ctx.lineWidth = 2;
-    //   ctx.strokeStyle = 'rgba(255,0,0, .4)';
+    //   ctx.lineWidth = 1;
+    //   ctx.strokeStyle = 'rgba(255,0,0, .1)';
     //   ctx.stroke();
     // }
   }
@@ -375,6 +470,7 @@ let contador = 0;
 function escalarLienzo(lienzo, ctx) {
   lienzo.width = ancho;
   lienzo.height = alto;
+
   // Object.assign(lienzo.style, {
   //   width: `${ancho}px`,
   //   height: `${alto}px`,
