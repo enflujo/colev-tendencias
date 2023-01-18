@@ -1,45 +1,29 @@
 {
-  "name": "plantilla-webpack",
+  "name": "colev-tendencias",
   "version": "1.0.0",
   "main": "src/index.js",
   "author": "Juan Camilo González <j.gonzalezj@uniandes.edu.co> (https://juancgonzalez.com)",
   "license": "MIT",
   "private": true,
   "scripts": {
-    "build": "webpack --config webpack.prod.js",
-    "start": "webpack serve --config webpack.dev.js",
-    "servidor": "nodemon servidor.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite build && vite preview",
+    "servidor": "nodemon servidor.js",
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write --list-different ."
   },
   "devDependencies": {
-    "@babel/core": "^7.18.0",
-    "@babel/plugin-proposal-class-properties": "^7.17.12",
-    "@babel/plugin-transform-runtime": "^7.18.0",
-    "@babel/preset-env": "^7.18.0",
-    "add": "^2.0.6",
-    "autoprefixer": "^10.4.7",
-    "babel-loader": "^8.2.5",
-    "clean-webpack-plugin": "^4.0.0",
-    "cross-env": "^7.0.3",
-    "css-loader": "^6.7.1",
-    "fuzzball": "^2.1.2",
-    "html-loader": "^3.1.0",
-    "html-webpack-plugin": "^5.5.0",
-    "mini-css-extract-plugin": "^2.6.0",
-    "nodemon": "^2.0.16",
-    "postcss": "^8.4.14",
-    "postcss-loader": "^7.0.0",
-    "postcss-preset-env": "^7.6.0",
-    "sass": "^1.52.0",
-    "sass-loader": "^13.0.0",
-    "style-loader": "^3.3.1",
-    "webpack": "^5.72.1",
-    "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.9.0",
-    "webpack-merge": "^5.8.0"
+    "autoprefixer": "^10.4.13",
+    "cssnano": "^5.1.14",
+    "nodemon": "^2.0.20",
+    "postcss": "^8.4.21",
+    "prettier": "^2.8.3",
+    "sass": "^1.57.1",
+    "vite": "^4.0.4"
   },
   "dependencies": {
-    "@babel/runtime": "^7.18.0",
-    "three": "^0.142.0"
+    "three": "^0.148.0"
   },
   "browserslist": {
     "production": [
