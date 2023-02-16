@@ -11,12 +11,13 @@ import {
 import Punto from './utilidades/Punto';
 import procesarDatos from './utilidades/procesarDatos';
 import tendencias from './datos/tendenciasFiltradas.json';
-import { crearTexturaDeLienzo, crearTexturaLineaTiempo } from './utilidades/threeRender';
+import { convertirEscala } from '@enflujo/alquimia';
+
+// import { crearTexturaDeLienzo, crearTexturaLineaTiempo } from './utilidades/threeRender';
 
 const conteoMinimo = 14;
 const escalaPantalla = window.devicePixelRatio;
 let pesoMax2 = 0;
-
 let fechaA = new Date('2023/01/01');
 let fechaB = new Date('1970/01/01');
 
@@ -122,20 +123,16 @@ tendenciasFiltradas.forEach((t) => {
   });
 });
 
-// console.log(tendenciasFiltradas, fechaA, fechaB, numeroSemanas, pesoMax2);
-
 const datos2 = {};
-
-// console.log(tendenciasFiltradas);
 const fechaInicial = new Date('2020/03/25');
 const fechaFinal = new Date('2022/05/15');
 const semanasTotal = calcularSemanas(fechaInicial, fechaFinal);
-const anchoSemana = 50;
-const partesSemana = 50; // 3
+const anchoSemana = 150;
+const partesSemana = 3; // 3
 const anchoSeccion = anchoSemana / partesSemana;
 const ancho = semanasTotal * anchoSemana;
-const pesoMax = 75;
-const alto = pesoMax;
+const pesoMax = 175;
+const altoGeneral = pesoMax;
 const lineaTiempo = document.getElementById('lineaTiempo');
 
 // for (let n = 0; n < 200; n++) {
@@ -147,44 +144,102 @@ const lineaTiempo = document.getElementById('lineaTiempo');
 // }
 // console.log(datos2);
 
-const datos = procesarDatos(semanasTotal, alto, anchoSemana, partesSemana);
-// console.log(datos);
+const datos = procesarDatos(semanasTotal, altoGeneral, anchoSemana, partesSemana);
+
 const bebas = new FontFace('bebas', 'url(https://fonts.gstatic.com/s/bebasneue/v9/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2)');
+
+// Cargar fuente y esperar a que esté lista antes de iniciar.
+bebas.load().then((fuente) => {
+  document.fonts.add(fuente);
+  let i = 0;
+  let ondas = [];
+
+  for (let palabra in datos) {
+    const contenedor = document.createElement('div');
+    const { onda } = datos[palabra];
+
+    contenedor.className = 'contenedorPalabra';
+    ondas[i] = onda;
+    const { lienzo, escalaY, nuevoAlto } = crearLineaPalabra(palabra, contenedor, onda, i, ondas);
+
+    lineaTiempo.appendChild(contenedor);
+
+    // dibujar palabras modificadas
+    crearFila(ondas, i, lienzo, contenedor, escalaY, nuevoAlto);
+
+    i++;
+  }
+  // crearTexturaLineaTiempo(ancho, alto, fechaInicial, fechaFinal, semanasTotal);
+  // console.log(ondas)
+});
 
 function crearLineaPalabra(palabra, contenedor, onda, idx, ondas) {
   const lienzo = document.createElement('canvas');
   const ctx = lienzo.getContext('2d', { alpha: false });
-  ctx.imageSmoothingQuality = 'high';
+  const texto = `${palabra}  `; // Poner 2 espacios al final para mejorar legibilidad
+
   lienzo.className = 'lienzoOriginal';
+
   escalarLienzo(lienzo, ctx);
 
-  // Poner 2 espacios al final para mejorar legibilidad
-  const texto = `${palabra}  `;
-  ctx.font = `${pesoMax}pt bebas`;
   ctx.textBaseline = 'top';
+  ctx.imageSmoothingQuality = 'high';
+  ctx.font = `${pesoMax}px bebas`;
 
   const dimsPalabra = ctx.measureText(texto);
-  // console.log(dimsPalabra)
   const iteracionesPalabra = (ancho / dimsPalabra.width) | 0;
-  let grd = ctx.createLinearGradient(0, 0, ancho, 0);
-  let yAvg;
+  const grd = ctx.createLinearGradient(0, 0, ancho, 0);
   const hue = aleatorioInteger(360);
+  const { actualBoundingBoxLeft: x, actualBoundingBoxAscent: y, actualBoundingBoxDescent: alto } = dimsPalabra;
+  const nuevoAlto = alto + y;
+  const escalaY = (valor) => convertirEscala(valor, 0, pesoMax, 0, nuevoAlto);
+
   for (let i = 0; i < onda.length - 1; i++) {
     const puntoA = onda[i];
     const puntoB = onda[i + 1];
-    yAvg = (puntoA.y + puntoB.y) / 2;
+    let yAvg = (puntoA.y + puntoB.y) / 2;
     yAvg = Math.max(20, Math.min(yAvg, 100));
     grd.addColorStop(i / onda.length, generateHslaColors(94, yAvg, 1, hue));
   }
-  ctx.fillStyle = grd;
-  ctx.fillText(texto.repeat(iteracionesPalabra), 0, 0);
 
+  ctx.fillStyle = grd;
+  ctx.fillText(texto.repeat(iteracionesPalabra), x, y);
+
+  contenedor.style.height = `${nuevoAlto}px`;
   // pintar palabras sin modificar
   // contenedor.appendChild(lienzo);
 
-  crearTexturaDeLienzo(lienzo, ancho, alto, idx, ondas);
+  // dibujar curva
+  dibujarOnda(onda, contenedor, escalaY);
 
-  return lienzo;
+  // crearTexturaDeLienzo(lienzo, ancho, alto, idx, ondas);
+
+  return { lienzo, escalaY, nuevoAlto };
+}
+
+function dibujarOnda(onda, contenedor, escalaY) {
+  const lienzo = document.createElement('canvas');
+  const ctx = lienzo.getContext('2d');
+
+  escalarLienzo(lienzo, ctx);
+  lienzo.className = 'onda';
+  ctx.strokeStyle = '#32a852';
+  ctx.lineWidth = '3';
+  // ctx.setTransform(1, 0, 0, 1, 0, alto + 2);
+  ctx.beginPath();
+  ctx.moveTo(onda[0].x, escalaY(onda[0].y));
+
+  onda.forEach((punto, i) => {
+    if (i === 0) {
+      ctx.moveTo(punto.x, escalaY(punto.y));
+    } else {
+      ctx.lineTo(punto.x, escalaY(punto.y));
+    }
+  });
+
+  ctx.stroke();
+
+  contenedor.appendChild(lienzo);
 }
 
 function aleatorioInteger(max) {
@@ -200,7 +255,6 @@ function aleatorioRgbColor() {
 
 function aleatorioHexColor() {
   let [r, g, b] = aleatorioRgbColor();
-
   let hr = r.toString(16).padStart(2, '0');
   let hg = g.toString(16).padStart(2, '0');
   let hb = b.toString(16).padStart(2, '0');
@@ -213,81 +267,36 @@ function generateHslaColors(saturation, lightness, alpha, hue) {
   return color;
 }
 
-// Cargar fuente y esperar a que esté lista antes de iniciar.
-bebas.load().then((fuente) => {
-  document.fonts.add(fuente);
-  let i = 0;
-  let ondas = [];
-  for (let palabra in datos) {
-    const contenedor = document.createElement('div');
-    const { onda } = datos[palabra];
-    ondas[i] = onda;
-    const lienzoOriginal = crearLineaPalabra(palabra, contenedor, onda, i, ondas);
-
-    contenedor.className = 'contenedorPalabra';
-    lineaTiempo.appendChild(contenedor);
-
-    // dibujar palabras modificadas
-    // crearFila(ondas, i, lienzoOriginal, contenedor);
-
-    // dibujar curva
-    // dibujarOnda(onda, contenedor);
-    i++;
-  }
-  crearTexturaLineaTiempo(ancho, alto, fechaInicial, fechaFinal, semanasTotal);
-  // console.log(ondas)
-});
-
-function dibujarOnda(onda, contenedor) {
-  const lienzo = document.createElement('canvas');
-  const ctx = lienzo.getContext('2d');
-
-  escalarLienzo(lienzo, ctx);
-  lienzo.className = 'onda';
-  ctx.strokeStyle = '#32a852';
-  ctx.lineWidth = '2';
-  ctx.setTransform(1, 0, 0, 1, 0, alto + 2);
-  ctx.beginPath();
-  ctx.moveTo(onda[0].x, onda[0].y);
-
-  onda.forEach((punto, i) => {
-    if (i === 0) {
-      ctx.moveTo(punto.x, punto.y);
-    } else {
-      ctx.lineTo(punto.x, punto.y);
-    }
-  });
-
-  ctx.stroke();
-
-  contenedor.appendChild(lienzo);
-}
-
 // Basado en https://codepen.io/Sphinxxxx/pen/QmdGPW
-function crearFila(ondas, idx, lienzoOriginal, contenedor) {
+function crearFila(ondas, idx, lienzoOriginal, contenedor, escalaY, alto) {
   const lienzo = document.createElement('canvas');
-
   const ctx = lienzo.getContext('2d');
-  lienzo.className = 'lineaLetras';
   const onda = ondas[idx];
   let onda0 = null;
+  lienzo.className = 'lineaLetras';
 
   if (idx > 0) {
     onda0 = ondas[idx - 1];
   }
 
   escalarLienzo(lienzo, ctx);
-  for (let i = 0; i < onda.length - 2; i++) {
-    // for (let i = 0; i < 8; i++) {
+
+  // for (let i = 0; i < onda.length - 2; i++) {
+  for (let i = 0; i < 8; i++) {
     const puntoA = onda[i];
     const puntoB = onda[i + 1];
+    // puntoA.y = escalaY(puntoA.y);
+    puntoB.y = escalaY(puntoB.y);
+
     let puntoA0, puntoB0, yMax0;
-    let yMax = Math.max(puntoA.y, puntoB.y);
+    const yMax = Math.max(puntoA.y, puntoB.y);
     // ctx.fillStyle = generateHslaColors(100, yMax, 1, aleatorioInteger(360))
 
     if (idx > 0) {
       puntoA0 = onda0[i];
       puntoB0 = onda0[i + 1];
+      puntoA0.y = escalaY(puntoA0.y);
+      puntoB0.y = escalaY(puntoB0.y);
       yMax0 = Math.max(puntoA0.y, puntoB0.y);
     }
 
@@ -336,12 +345,13 @@ function crearFila(ondas, idx, lienzoOriginal, contenedor) {
     //   new Punto(desplazarX, alto),
     //   new Punto(desplazarX + anchoSeccion, alto),
     // ];
-    pintar(esquinas, centro, desplazarX);
+
+    pintar(esquinas, centro, desplazarX, alto);
   }
 
   contenedor.appendChild(lienzo);
 
-  function pintar(esquinas, centro, desplazarX) {
+  function pintar(esquinas, centro, desplazarX, alto) {
     function pintarTriangulo(f1, f2, f3, d1, d2, d3, desplazarX) {
       const [f1x, f2x, f3x] = expandirTriangulo(f1, f2, f3, 0.3);
       const [d1x, d2x, d3x] = expandirTriangulo(d1, d2, d3, 0.3);
@@ -433,9 +443,9 @@ function crearFila(ondas, idx, lienzoOriginal, contenedor) {
     // ctx.strokeStyle = 'white';
     // ctx.filter = 'drop-shadow(1px 1px 1px white)'
     // ctx.filter = `blur(${1}px)`;
-
+    console.log(a);
     ctx.save();
-    ctx.setTransform(a, b, c, d, e, f + alto - 4);
+    ctx.setTransform(a, b, c, d, e, f);
     ctx.beginPath();
     ctx.moveTo(f1.x, f1.y);
     ctx.lineTo(f2.x, f2.y);
@@ -450,33 +460,33 @@ function crearFila(ondas, idx, lienzoOriginal, contenedor) {
     //   contador++;
     //   return;
     // } else {
-    //   const { radio, centro } = calcularInCirculo(d1, d2, d3);
-    //   ctx.setTransform(1, 0, 0, 1, 0, alto);
+    const { radio, centro } = calcularInCirculo(d1, d2, d3);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    //   ctx.beginPath();
-    //   ctx.arc(centro.x, centro.y, radio, 0, 2 * Math.PI, false);
-    //   ctx.moveTo(d1.x, d1.y);
-    //   ctx.lineTo(d2.x, d2.y);
-    //   ctx.lineTo(d3.x, d3.y);
-    //   ctx.closePath();
-    //   ctx.lineWidth = 1;
-    //   ctx.strokeStyle = 'rgba(255,0,0, .1)';
-    //   ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(centro.x, centro.y, radio, 0, 2 * Math.PI, false);
+    ctx.moveTo(d1.x, d1.y);
+    ctx.lineTo(d2.x, d2.y);
+    ctx.lineTo(d3.x, d3.y);
+    ctx.closePath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,0,0, 1)';
+    ctx.stroke();
     // }
   }
 }
 let contador = 0;
 
 function escalarLienzo(lienzo, ctx) {
-  lienzo.width = ancho;
-  lienzo.height = alto;
+  // lienzo.width = ancho;
+  // lienzo.height = alto;
 
-  // Object.assign(lienzo.style, {
-  //   width: `${ancho}px`,
-  //   height: `${alto}px`,
-  // });
-  // lienzo.width = ancho * escalaPantalla;
-  // lienzo.height = alto * escalaPantalla;
+  Object.assign(lienzo.style, {
+    width: `${ancho}px`,
+    height: `${altoGeneral}px`,
+  });
+  lienzo.width = ancho * escalaPantalla;
+  lienzo.height = altoGeneral * escalaPantalla;
 
-  // ctx.scale(escalaPantalla, escalaPantalla);
+  ctx.scale(escalaPantalla, escalaPantalla);
 }

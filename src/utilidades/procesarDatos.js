@@ -1,37 +1,37 @@
 import { aleatorio, pesosAPuntos, puntosACurvas } from './ayudas';
 
 const palabras = [
-  'Moverse ',
+  'Moverse',
   'Agua',
-  // 'Carechimba',
-  'Colocar',
-  'Monumento',
-  'Recubrimiento',
-  'Anticongelante',
-  'Soga',
-  'Sensación',
-  'Sensación',
-  'Clavar',
-  'Hogar',
-  'Orbitar',
-  'Ponerse',
-  'Palmera',
-  'Pimpollo',
-  'Perforar',
-  'Almohada',
-  'Feo',
-  'Himalaya',
-  'Tos',
-  'Capilla',
-  'Sartén',
-  'Comerciante',
-  'Demente',
-  'Quemadura',
-  'Pelear',
-  'Alfalfa',
-  'Colina',
-  'Tomar',
-  'Enfermo',
+  // // 'Carechimba',
+  // 'Colocar',
+  // 'Monumento',
+  // 'Recubrimiento',
+  // 'Anticongelante',
+  // 'Soga',
+  // 'Sensación',
+  // 'Sensación',
+  // 'Clavar',
+  // 'Hogar',
+  // 'Orbitar',
+  // 'Ponerse',
+  // 'Palmera',
+  // 'Pimpollo',
+  // 'Perforar',
+  // 'Almohada',
+  // 'Feo',
+  // 'Himalaya',
+  // 'Tos',
+  // 'Capilla',
+  // 'Sartén',
+  // 'Comerciante',
+  // 'Demente',
+  // 'Quemadura',
+  // 'Pelear',
+  // 'Alfalfa',
+  // 'Colina',
+  // 'Tomar',
+  // 'Enfermo',
 ];
 
 export default (semanasTotal, alto, anchoSeccion, partesSeccion) => {
@@ -51,6 +51,6 @@ export default (semanasTotal, alto, anchoSeccion, partesSeccion) => {
     datosPalabra.puntos = pesosAPuntos(datosPalabra.pesos, anchoSeccion);
     datosPalabra.onda = puntosACurvas(datosPalabra.puntos, 0.5, partesSeccion);
   }
-  console.log(datos);
+
   return datos;
 };

@@ -251,8 +251,8 @@ function vertexShader() {
 
 function fragmentShader() {
   return `
-        #include <packing>
-	    #include <common>
+    #include <packing>
+    #include <common>
 		precision highp int;
 		precision highp float;
 		precision highp sampler2D;

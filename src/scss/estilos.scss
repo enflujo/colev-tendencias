@@ -13,7 +13,6 @@ html,
 body {
   margin: 0;
   padding: 0;
-  // background-color: #0d0c0c;
 }
 
 span {
@@ -25,20 +24,21 @@ span {
 .lineaPalabra {
   display: flex;
 }
-// #lienzo {
-//   position: absolute;
-//   top: 3px;
-//   left: 0;
-// }
+
+#lienzo {
+  position: absolute;
+  top: 3px;
+  left: 0;
+}
 
 .contenedorPalabra {
   position: relative;
-  height: 78px;
-  transform: translateY(-70px);
+  // height: 78px;
+  // transform: translateY(-70px);
 }
 
 .lienzoOriginal {
-  margin-top: 50px;
+  // margin-top: 50px;
 }
 
 .lineaLetras,
@@ -49,7 +49,7 @@ span {
 }
 
 #lineaTiempo {
-  display: none;
+  // display: none;
 }
 
 @font-face {

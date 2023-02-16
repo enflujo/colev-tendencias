@@ -23,6 +23,7 @@
     "vite": "^4.0.4"
   },
   "dependencies": {
+    "@enflujo/alquimia": "^1.0.5",
     "three": "^0.148.0"
   },
   "browserslist": {
