@@ -11,4 +11,5 @@ export default defineConfig({
     assetsDir: 'recursos',
     sourcemap: true,
   },
+  plugins: [],
 });

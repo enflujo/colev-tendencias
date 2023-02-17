@@ -1,7 +1,7 @@
 import { aleatorio, pesosAPuntos, puntosACurvas } from './ayudas';
 
 const palabras = [
-  'Moverse ',
+  'Moverse',
   'Agua',
   // 'Carechimba',
   'Colocar',
@@ -51,6 +51,6 @@ export default (semanasTotal, alto, anchoSeccion, partesSeccion) => {
     datosPalabra.puntos = pesosAPuntos(datosPalabra.pesos, anchoSeccion);
     datosPalabra.onda = puntosACurvas(datosPalabra.puntos, 0.5, partesSeccion);
   }
-  console.log(datos);
+
   return datos;
 };

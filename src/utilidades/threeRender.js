@@ -1,5 +1,3 @@
-// import * as THREE from 'three';
-
 import {
   AdditiveBlending,
   CanvasTexture,
@@ -28,6 +26,8 @@ import {
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import fragmento from '../shaders/palabras.frag?raw';
+import vertices from '../shaders/palabras.vert?raw';
 
 const escena = new Scene();
 const camera = new PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
@@ -69,32 +69,26 @@ let composer = new EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
-document.getElementById('renderizador').onmousemove = function () {
-  mouseX = event.clientX - window.innerWidth / 2; // Gets Mouse X.
-  mouseY = event.clientY - window.innerHeight / 2; // Gets Mouse Y.
-  // console.log(mouseX,mouseY)
-  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+document.getElementById('renderizador').onmousemove = function (evento) {
+  mouseX = evento.clientX - window.innerWidth / 2; // Gets Mouse X.
+  mouseY = evento.clientY - window.innerHeight / 2; // Gets Mouse Y.
+  pointer.x = (evento.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(evento.clientY / window.innerHeight) * 2 + 1;
 };
 
-addEventListener('wheel', (event) => {
-  camera.position.z = clamp(camera.position.z + event.deltaY, 1, 5000);
+addEventListener('wheel', (evento) => {
+  camera.position.z = clamp(camera.position.z + evento.deltaY, 1, 5000);
   camera.updateProjectionMatrix();
-  // let e = document.getElementsByClassName('etiqueta')
-  // for( let i=0; i<e.length; i++){
-  //     e[i].style.fontSize = '12px' //clamp(Math.log(camera.position.z)*2,11,12) + 'px';
-  //     // e[i].style.transform = 'scale(' + camera.position.z + ')'
-  // }
 });
 
-document.addEventListener('pointerdown', (event) => {
+document.addEventListener('pointerdown', () => {
   // update the picking ray with the camera and pointer position
   raycaster.setFromCamera(pointer, camera);
   // calculate objects intersecting the picking ray
   const intersects = raycaster.intersectObjects(escena.children);
   for (let i = 0; i < intersects.length; i++) {
     let val = intersects[i].object.material.uniforms.selected.value;
-    console.log(intersects[i].object.material.uniforms.selected);
+
     if (val != 1.0) {
       intersects[i].object.material.uniforms.selected.value = 1.0;
     }
@@ -104,21 +98,6 @@ document.addEventListener('pointerdown', (event) => {
     intersects[i].object.material.uniformsNeedUpdate = true;
   }
 });
-
-// var sliderTiempo = document.getElementById("sliderTiempo");
-// sliderTiempo.oninput = function() {
-//     camera.position.x = this.value;
-//     lookAt.x = this.value
-//     camera.updateProjectionMatrix()
-//     // controls.lookAt(lookAt)
-// }
-
-// var sliderZoom = document.getElementById("sliderZoom");
-// sliderZoom.oninput = function() {
-//     camera.position.z = this.value;
-//     camera.updateProjectionMatrix()
-//     // controls.lookAt(lookAt)
-// }
 
 export function crearTexturaDeLienzo(lienzo, ancho, alto, idx, ondas) {
   const textura = new CanvasTexture(
@@ -133,10 +112,10 @@ export function crearTexturaDeLienzo(lienzo, ancho, alto, idx, ondas) {
     renderer.capabilities.getMaxAnisotropy()
   );
   textura.needsUpdate = true;
-  // console.log(onda[0].x)
+
   const size = ancho * 1;
   // https://threejs.org/docs/#api/en/textures/DataTexture
-  let datosDeformacion = new Uint8Array(4 * size);
+  const datosDeformacion = new Uint8Array(4 * size);
   let datosDeformacion1 = new Uint8Array(4 * size);
 
   let min = 0;
@@ -188,8 +167,8 @@ function crearGeometria(textura, texturaDeformacion, texturaDeformacion1, ancho,
 
   materials[idx] = new ShaderMaterial({
     uniforms: uniforms,
-    fragmentShader: fragmentShader(),
-    vertexShader: vertexShader(),
+    fragmentShader: fragmento,
+    vertexShader: vertices,
     precision: 'highp',
     side: DoubleSide,
     transparent: true,
@@ -209,79 +188,13 @@ function crearGeometria(textura, texturaDeformacion, texturaDeformacion1, ancho,
 
   camera.updateProjectionMatrix();
   renderer.render(escena, camera);
-
-  // controls.update();
-}
-
-function vertexShader() {
-  return `
-        #include <packing>
-        #include <common>
-        precision highp int;
-        precision highp float;
-        precision highp sampler2D;
-
-        varying vec2 vUv;
-        varying vec3 vPos;
-
-        uniform sampler2D datosDeformacion;
-        uniform sampler2D datosDeformacion1;
-        uniform float tiempo;
-        uniform float selected;
-  
-        void main() {
-            vec2 deformacion = texture2D(datosDeformacion,vec2(uv.x,0.0)).xy;
-            vec2 deformacion1 = texture2D(datosDeformacion1,vec2(uv.x,0.0)).xy;
-
-            vUv = uv;
-            vPos = position;
-            if(position.y<0.5){
-                vPos.y -= deformacion.y*100.0; //*(1.0+sin(0.5*tiempo)*sin(0.5+0.5*tiempo));
-                vPos.z += deformacion.y*50.0*sin(0.5*tiempo)+selected*50.0;
-            }
-            if(position.y>0.5){
-                vPos.y -= deformacion1.y*100.0; //*(1.0+sin(0.5*tiempo)*sin(0.5+0.5*tiempo));
-                vPos.z += deformacion.y*50.0*sin(0.5*tiempo)+selected*50.0;
-            }
-
-            gl_Position = projectionMatrix * modelViewMatrix * vec4( vPos, 1.0 );
-        }
-    `;
-}
-
-function fragmentShader() {
-  return `
-        #include <packing>
-	    #include <common>
-		precision highp int;
-		precision highp float;
-		precision highp sampler2D;
-        varying vec2 vUv;
-
-        uniform float ancho;
-        uniform float alto;
-        uniform sampler2D textura;
-        uniform float tiempo;
-        uniform float selected;
-        
-        void main() {
-            vec2 screenCoord = gl_FragCoord.xy/vec2(ancho, alto);
-            vec3 col = texture2D(textura,vec2(vUv)).rgb;
-            float a = 1.0;
-            if((col.r < 0.01) && (col.g < 0.01) && (col.b < 0.01)){
-                a = 0.0;
-            }
-            gl_FragColor = vec4(col*0.75,a);
-        }
-    `;
 }
 
 export function crearTexturaLineaTiempo(ancho, alto, fechaInicial, fechaFinal, semanasTotal) {
   // crear datos textura para fechas
-  console.log(fechaInicial.getDate(), fechaFinal);
   const size = ancho * 1;
   const dato = new Uint8Array(4 * size);
-  let colA = new Color('rgb(10, 10, 10)');
+  const colA = new Color('rgb(10, 10, 10)');
   let colB = new Color('rgb(100, 52, 255)');
   let diff = ancho / semanasTotal;
   for (let i = 0; i < size; i++) {
@@ -387,4 +300,5 @@ function animate() {
   // renderer.render(escena, camera);
   composer.render();
 }
+
 animate();
